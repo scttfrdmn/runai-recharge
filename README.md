@@ -65,6 +65,10 @@ missing rate — a bug, fixable with an `INSERT`, and until it's fixed somebody
 used a GPU and nobody paid for it.
 
 `make demo` renders both from sample data with no database and no cluster.
+Committed copies are in the repo root — but GitHub shows `.html` as source, so
+to see them **rendered**, open them through a proxy:
+[statement](https://htmlpreview.github.io/?https://github.com/scttfrdmn/runai-recharge/blob/main/statement-sample.html)
+· [reconciliation](https://htmlpreview.github.io/?https://github.com/scttfrdmn/runai-recharge/blob/main/reconciliation-sample.html).
 
 ---
 
