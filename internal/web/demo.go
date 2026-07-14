@@ -14,7 +14,7 @@ import (
 // month — which is the case the whole design exists for. Two cost bases, two
 // rates, two subtotals, one grand total.
 func RenderDemo(w io.Writer) error {
-	s, err := NewServer(nil, nil)
+	s, err := NewServer(nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func RenderDemo(w io.Writer) error {
 // and an orphaned pod. A clean example teaches you nothing -- the document
 // exists for the days it isn't clean.
 func RenderReconDemo(w io.Writer) error {
-	s, err := NewServer(nil, nil)
+	s, err := NewServer(nil, nil, nil)
 	if err != nil {
 		return err
 	}

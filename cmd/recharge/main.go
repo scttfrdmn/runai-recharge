@@ -69,7 +69,7 @@ func main() {
 	case "reconcile":
 		err = doReconcile(ctx, bill.NewReconciler(db), os.Args[2:])
 	case "serve":
-		err = serve(ctx, log, bill.NewBiller(db), bill.NewReconciler(db))
+		err = serve(ctx, log, db)
 	case "verify-alloc":
 		err = verifyAlloc(ctx, rc, os.Args[2:])
 	default:
@@ -397,8 +397,8 @@ func pct(a, b float64) float64 {
 // serve
 // ---------------------------------------------------------------------------
 
-func serve(ctx context.Context, log *slog.Logger, b *bill.Biller, rec *bill.Reconciler) error {
-	s, err := web.NewServer(b, rec)
+func serve(ctx context.Context, log *slog.Logger, db *pgxpool.Pool) error {
+	s, err := web.NewServer(bill.NewBiller(db), bill.NewReconciler(db), bill.NewHealth(db))
 	if err != nil {
 		return err
 	}

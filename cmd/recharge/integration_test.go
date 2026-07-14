@@ -163,7 +163,17 @@ func freshSchema(ctx context.Context, t *testing.T, dsn string) {
 func TestPollToStatementIntegration(t *testing.T) {
 	dsn := os.Getenv("RECHARGE_TEST_DSN")
 	if dsn == "" {
-		t.Skip("set RECHARGE_TEST_DSN to a disposable Postgres to run the integration test")
+		// A laptop with no Postgres skips. CI must NOT: a skip is a silent zero,
+		// and a green CI that ran nothing is worse than a red one. If someone
+		// breaks the service block and the DSN stops resolving, this is the only
+		// thing covering the SQL -- so it fails loudly rather than passing by
+		// skipping. Same move as every other tripwire in this codebase.
+		if os.Getenv("CI") != "" {
+			t.Fatal("RECHARGE_TEST_DSN unset in CI -- the integration test is the " +
+				"only coverage for the SQL and the way poll composes through it. " +
+				"Refusing to pass by skipping.")
+		}
+		t.Skip("no RECHARGE_TEST_DSN; set it to a disposable Postgres to run this")
 	}
 	ctx := context.Background()
 
@@ -282,6 +292,25 @@ func TestPollToStatementIntegration(t *testing.T) {
 	}
 	if r.Clean() {
 		t.Error("period has an orphan pod; Clean() must be false")
+	}
+
+	// --- health instruments read the same gaps -----------------------------
+	// The /healthz and /metrics readings must agree with the reconciliation:
+	// same orphan backlog, and unbilled read through the SAME Biller.Unbilled
+	// predicate. A poll just completed, so it is not stale.
+	health := bill.NewHealth(pool)
+	snap, err := health.Snapshot(ctx, base.Add(90*time.Minute), 24*time.Hour)
+	if err != nil {
+		t.Fatalf("health snapshot: %v", err)
+	}
+	if !snap.EverPolled {
+		t.Error("EverPolled = false after a completed poll")
+	}
+	if snap.OrphanPods != 1 {
+		t.Errorf("health OrphanPods = %d, want 1 (agrees with reconciliation)", snap.OrphanPods)
+	}
+	if snap.UnbilledGaps != 0 || snap.UnbilledGPUHours != 0 {
+		t.Errorf("health unbilled = %d gaps / %v hrs, want 0/0", snap.UnbilledGaps, snap.UnbilledGPUHours)
 	}
 
 	// --- idempotency: a second poll changes NOTHING -------------------------

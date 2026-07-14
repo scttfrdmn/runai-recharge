@@ -243,6 +243,27 @@ to start** on a non-loopback `RECHARGE_ADDR` unless you also set
 instead. While the hatch is open the warning fires on *every request*, not once
 at boot where it scrolls away.
 
+**Every instrument is read.** Detecting a gap is half the job; the other half is
+someone hearing about it. All three tripwires are exposed for whatever you
+already run for monitoring, and `/healthz`/`/metrics` are the only routes not
+behind authz — a scraper carries no SSO identity, and they expose counts, not
+billing data:
+
+- `GET /healthz` **503s when the poll has stalled** (last success older than 3×
+  the interval). The poll is the only unrecoverable component — Run:ai ages its
+  source data out — and a poll that fails for *any* reason, tripwire included,
+  simply stops advancing the watermark, so staleness catches every failure mode
+  at once. Wire it to your uptime check; a 503 is a page-someone event.
+- `GET /metrics` emits `recharge_poll_last_success_timestamp`,
+  `recharge_poll_stale`, `recharge_orphan_pods`, `recharge_unbilled_gpu_hours`,
+  and `recharge_unbilled_gaps`. Alert on the last two before close-of-month, not
+  at it.
+
+The same rule applies to the tests: the integration test skips with no
+`RECHARGE_TEST_DSN` on a laptop, but **fails rather than skips under CI** — a
+green build that silently ran nothing is the same silent zero everything here
+exists to prevent.
+
 ---
 
 ## Status
