@@ -70,6 +70,17 @@ used a GPU and nobody paid for it.
 
 ## Quickstart
 
+**Prerequisites**
+
+- **Go 1.25+** — to `make build` the binary (see `go.mod`).
+- **PostgreSQL 16+** — the ledger. Any reachable instance; `createdb`/`psql`
+  below assume the client tools and a local server. CI runs against 16.
+- **Run:ai application credentials** — an app with read access to workloads,
+  pods, nodes, and metrics on your tenant. `RUNAI_APP_ID` / `RUNAI_APP_SECRET`
+  come from the Run:ai UI; `RUNAI_URL` is your control-plane URL. Only `poll`
+  and `verify-alloc` talk to Run:ai — `bill`, `reconcile`, `serve`, and `demo`
+  need Postgres alone, and `demo` needs neither.
+
 ```sh
 createdb recharge
 psql recharge -f migrations/0001_schema.sql
