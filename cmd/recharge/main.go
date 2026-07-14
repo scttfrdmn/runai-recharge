@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -402,6 +403,9 @@ func serve(ctx context.Context, log *slog.Logger, b *bill.Biller, rec *bill.Reco
 		return err
 	}
 
+	addr := env("RECHARGE_ADDR", ":8080")
+	handler := s.Routes()
+
 	// Authz FAILS CLOSED by default: every route 404s until you wire this.
 	// The predicate is already threaded through the query path; it needs an
 	// identity. Run:ai's SSO subject is the identity, and project_group already
@@ -409,22 +413,84 @@ func serve(ctx context.Context, log *slog.Logger, b *bill.Biller, rec *bill.Reco
 	//
 	//   s.Authz = func(r *http.Request) ([]string, bool, error) { ... }
 	//
-	// For a single-operator pilot, this is the escape hatch -- and it is
-	// deliberately something you have to type:
-	if os.Getenv("RECHARGE_INSECURE_ADMIN") == "yes-i-mean-it" {
-		log.Warn("AUTHZ DISABLED -- every route is world-readable")
-		s.Authz = func(*http.Request) ([]string, bool, error) { return nil, true, nil }
+	// For a single-operator pilot, RECHARGE_INSECURE_ADMIN=yes-i-mean-it is the
+	// escape hatch. It disables authz entirely, so it must never ship silently.
+	// A warning that scrolls past once at startup is not a control: bind :8080
+	// with the hatch open and you serve institution-wide financials to anyone who
+	// can reach the port, and nothing after boot ever says so again.
+	if insecureAdmin() {
+		// The hatch is pilot-only, which means loopback-only. Refuse the one
+		// combination that is an incident rather than a pilot -- authz off AND a
+		// world-reachable bind -- unless a SECOND deliberate opt-in overrides it.
+		// Refusing to start is loud; a log line is not.
+		if !loopbackAddr(addr) && !bindOverride() {
+			return fmt.Errorf(
+				"refusing to start: RECHARGE_INSECURE_ADMIN disables authz but "+
+					"RECHARGE_ADDR=%q is not loopback -- this serves all billing "+
+					"data to anyone who can reach the port. Bind 127.0.0.1 (put a "+
+					"real proxy in front), or set "+
+					"RECHARGE_INSECURE_ADMIN_BIND_ANYWHERE=yes-i-mean-it if you "+
+					"genuinely mean it", addr)
+		}
+		log.Warn("AUTHZ DISABLED -- every route is world-readable", "addr", addr)
+		s.Authz = allowAllAdmin
+		// And it says so on EVERY request, not once at boot.
+		handler = warnInsecure(log, handler)
 	}
 
-	addr := env("RECHARGE_ADDR", ":8080")
 	log.Info("serving", "addr", addr)
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           s.Routes(),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return srv.ListenAndServe()
+}
+
+// insecureAdmin reports whether the authz-disabling escape hatch is set. It is
+// deliberately an exact-match value you have to type, not a boolean.
+func insecureAdmin() bool {
+	return os.Getenv("RECHARGE_INSECURE_ADMIN") == "yes-i-mean-it"
+}
+
+// bindOverride is the SECOND opt-in: it lets the insecure hatch bind a
+// non-loopback address. Two deliberate values, because the combination is an
+// incident waiting to happen.
+func bindOverride() bool {
+	return os.Getenv("RECHARGE_INSECURE_ADMIN_BIND_ANYWHERE") == "yes-i-mean-it"
+}
+
+func allowAllAdmin(*http.Request) ([]string, bool, error) { return nil, true, nil }
+
+// loopbackAddr reports whether a listen address binds only the loopback
+// interface, so an authz-disabled server is reachable only from this host. An
+// empty host (":8080") or 0.0.0.0 binds every interface and is NOT loopback.
+func loopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// No port separator; treat the whole string as the host.
+		host = addr
+	}
+	if host == "" {
+		return false // ":8080" binds all interfaces
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// warnInsecure logs on every request while authz is disabled, so the danger is
+// present in the logs continuously rather than once at boot where it scrolls
+// away.
+func warnInsecure(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Warn("AUTHZ DISABLED -- serving without authorization",
+			"method", r.Method, "path", r.URL.Path, "remote", r.RemoteAddr)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---------------------------------------------------------------------------

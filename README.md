@@ -235,8 +235,13 @@ this turns that into a failed poll on day one. The dedup-by-ID that measures
 tripwire goes blind.
 
 **Authz fails closed.** Every route 404s until `Server.Authz` is wired to your
-SSO. For a single-operator pilot, `RECHARGE_INSECURE_ADMIN=yes-i-mean-it` — which
-logs a warning on every start, and which you have to mean.
+SSO. For a single-operator pilot, `RECHARGE_INSECURE_ADMIN=yes-i-mean-it`
+disables authz — and because that's world-readable financial data, it is
+*pilot-only, which means loopback-only*: with the hatch open, `serve` **refuses
+to start** on a non-loopback `RECHARGE_ADDR` unless you also set
+`RECHARGE_INSECURE_ADMIN_BIND_ANYWHERE=yes-i-mean-it`. Put a real proxy in front
+instead. While the hatch is open the warning fires on *every request*, not once
+at boot where it scrolls away.
 
 ---
 
