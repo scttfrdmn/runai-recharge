@@ -190,33 +190,91 @@ type workloadsPage struct {
 	NextPageToken string     `json:"nextPageToken"`
 }
 
+const workloadsPageLimit = 200
+
 // ListWorkloads returns every workload that was updated in [since, until).
 //
 // Poll on a cron and PERSIST. The metrics API is retention-limited and workload
 // records age out. People try to backfill a quarter and discover the data is
 // gone. Build the ledger first; worry about the web page second.
+//
+// !! PAGINATION IS UNVERIFIED AGAINST A LIVE CLUSTER -- see issue #2. !!
+//
+// The scheme (numeric offset vs. an opaque cursor, and the exact field name)
+// varies by cluster version, and we cannot know which this cluster wants
+// without it in front of us. What we CAN do is guarantee that guessing wrong is
+// LOUD rather than silent: the original loop broke as soon as NextPageToken came
+// back empty, so a wrong field name turned a full month into its first 200
+// workloads with no error and a completely plausible-looking short statement --
+// the exact silent-truncation failure class orphan_pod and Unbilled exist to
+// prevent. Here, we drive offset paging (what limit+offset implies), carry an
+// opaque token as a fallback if the server populates one, dedup by ID so the two
+// cannot double-count, and refuse to stop on a full page that produced no new
+// rows -- which is either a wrong scheme truncating the window or an ignored
+// offset looping forever. Both now surface on the first poll.
 func (c *Client) ListWorkloads(ctx context.Context, since, until time.Time) ([]Workload, error) {
+	if !until.After(since) {
+		return nil, fmt.Errorf("runai: ListWorkloads window is empty or inverted: since=%s until=%s",
+			since.UTC().Format(time.RFC3339), until.UTC().Format(time.RFC3339))
+	}
+
 	var all []Workload
-	page := ""
+	seen := map[string]bool{}
+	offset := 0
+	token := ""
 
 	for {
 		q := url.Values{}
+		// Bound the window at BOTH ends. `until` used to be accepted and ignored,
+		// so every poll silently scanned to the present and the caller's window
+		// end was a lie. updatedAt is half-open [since, until) to match the ledger.
 		q.Set("filterBy", "updatedAt>="+since.UTC().Format(time.RFC3339))
-		q.Set("limit", "200")
-		if page != "" {
-			q.Set("offset", page)
+		q.Add("filterBy", "updatedAt<"+until.UTC().Format(time.RFC3339))
+		q.Set("limit", strconv.Itoa(workloadsPageLimit))
+		if offset > 0 {
+			q.Set("offset", strconv.Itoa(offset))
+		}
+		if token != "" {
+			q.Set("pageToken", token)
 		}
 
 		var p workloadsPage
 		if err := c.get(ctx, "/api/v1/workloads", q, &p); err != nil {
 			return nil, err
 		}
-		all = append(all, p.Workloads...)
 
-		if p.NextPageToken == "" {
+		// Dedup by ID: with both an offset and a token in flight we must never
+		// count the same workload twice, and progress is measured in NEW rows.
+		fresh := 0
+		for _, w := range p.Workloads {
+			if seen[w.ID] {
+				continue
+			}
+			seen[w.ID] = true
+			all = append(all, w)
+			fresh++
+		}
+
+		// A short page is the last page. This is the only correct terminator.
+		if len(p.Workloads) < workloadsPageLimit {
 			break
 		}
-		page = p.NextPageToken
+
+		// A FULL page with no new workloads means we are not advancing: the
+		// pagination scheme is wrong for this cluster version. Left alone this is
+		// either a truncated window (under-billing, invisibly) or an infinite
+		// loop on the same page. We cannot know the right scheme here -- but we
+		// refuse to do it silently.
+		if fresh == 0 {
+			return nil, fmt.Errorf(
+				"runai: got a full page (%d) with no new workloads -- pagination "+
+					"scheme is wrong for this cluster version and the window is being "+
+					"truncated or looped. See internal/runai/client.go and issue #2; "+
+					"do not bill until this is resolved", workloadsPageLimit)
+		}
+
+		offset += len(p.Workloads)
+		token = p.NextPageToken
 	}
 	return all, nil
 }
