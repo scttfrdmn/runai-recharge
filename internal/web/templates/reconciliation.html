@@ -1,0 +1,314 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reconciliation — {{.PeriodLabel}}</title>
+
+<style>
+  /* A different document for a different reader. The PI statement is an
+     invoice: what did I spend. This is an audit: what did we have, what got
+     used, what did we bill, and what fell through.
+
+     So it looks like an audit. Denser, colder, exceptions in front rather than
+     buried. The three numbers get a masthead of their own, because the gaps
+     BETWEEN them are the entire reason the page exists — and the two gaps are
+     different in kind and must never be added together:
+
+       capacity - allocated = IDLE      operational fact
+       allocated - billed   = UNBILLED  bug, fix it */
+
+  :root {
+    --ink:    #16181d;
+    --paper:  #fbfbf9;
+    --rule:   #ddddd6;
+    --muted:  #6b7076;
+    --faint:  #9a9ea3;
+
+    --idle:   #b8791f;   /* costs money. not a bug. */
+    --lost:   #b5443a;   /* a bug. fix it. */
+    --ok:     #3f7d58;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6e6e2; --paper: #14161a; --rule: #2e3238;
+      --muted: #8f959c; --faint: #626870;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; padding: 3rem 1.5rem 6rem;
+    background: var(--paper); color: var(--ink);
+    font: 400 15px/1.5 ui-sans-serif, "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1140px; margin: 0 auto; }
+
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1rem; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 .6rem;
+  }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.015em; margin: 0 0 .4rem; }
+  .sub { font-size: 13px; color: var(--muted); }
+
+  /* ---- the three numbers, and the two gaps between them ------------------ */
+
+  .ledger-eq {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0; margin-top: 2rem;
+    border: 1px solid var(--rule);
+  }
+  .cell { padding: 1.1rem 1rem; border-right: 1px solid var(--rule); }
+  .cell:last-child { border-right: none; }
+  .cell .k {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: .4rem;
+  }
+  .cell .v {
+    font-size: 22px; font-weight: 600; letter-spacing: -.01em;
+    font-feature-settings: "tnum";
+  }
+  .cell .n { font-size: 11px; color: var(--faint); margin-top: .3rem; }
+
+  .cell.gap { background: color-mix(in srgb, var(--rule) 22%, transparent); }
+  .cell.gap .k { font-weight: 600; }
+  .cell.idle .v { color: var(--idle); }
+  .cell.lost .v { color: var(--lost); }
+  .cell.lost.clean .v { color: var(--ok); }
+
+  /* ---- exceptions come FIRST. that is the point of the document. --------- */
+
+  .exceptions { margin-top: 2.5rem; }
+  .exceptions.clean { opacity: .7; }
+
+  h2 {
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 600; margin: 0 0 .75rem;
+  }
+  h2 .count {
+    display: inline-block; margin-left: .5rem; padding: .05rem .4rem;
+    background: var(--lost); color: #fff; border-radius: 2px;
+    font-size: 10px; letter-spacing: .04em;
+  }
+
+  .exc {
+    border-left: 3px solid var(--lost);
+    padding: .7rem 0 .7rem 1rem; margin-bottom: .6rem;
+  }
+  .exc .what { font-weight: 500; font-size: 14px; }
+  .exc .why  { font-size: 12.5px; color: var(--muted); margin-top: .2rem; }
+  .exc .qty  { font-feature-settings: "tnum"; color: var(--lost); font-weight: 500; }
+  .exc code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; color: var(--ink);
+  }
+
+  .all-clear {
+    border-left: 3px solid var(--ok); padding: .7rem 0 .7rem 1rem;
+    font-size: 14px; color: var(--muted);
+  }
+
+  /* ---- capacity table ---------------------------------------------------- */
+
+  section { margin-top: 2.75rem; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 500; color: var(--muted); text-align: left;
+    padding: .5rem .65rem; border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  th.num { text-align: right; }
+  td {
+    padding: .6rem .65rem; border-bottom: 1px solid var(--rule);
+    font-size: 13.5px;
+  }
+  td.num { text-align: right; font-feature-settings: "tnum"; white-space: nowrap; }
+  .mono {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; color: var(--muted);
+  }
+  .v-idle { color: var(--idle); }
+  .v-lost { color: var(--lost); font-weight: 500; }
+  .v-zero { color: var(--faint); }
+  .unmapped { color: var(--lost); font-weight: 500; }
+
+  /* utilization bar, same language as the PI statement */
+  .util-bar {
+    display: inline-block; width: 46px; height: 5px; background: var(--rule);
+    border-radius: 1px; margin-right: .5rem; overflow: hidden; vertical-align: middle;
+  }
+  .util-bar i { display: block; height: 100%; border-radius: 1px; background: var(--ok); }
+  .util-bar.low i { background: var(--idle); }
+  .util-pct { font-size: 12px; font-feature-settings: "tnum"; }
+
+  tfoot td {
+    border-bottom: none; border-top: 2px solid var(--ink);
+    padding-top: .8rem; font-weight: 600;
+  }
+
+  .note {
+    margin-top: 2rem; padding: .9rem 1rem;
+    border: 1px solid var(--rule); border-radius: 2px;
+    font-size: 12.5px; color: var(--muted); line-height: 1.55;
+  }
+
+  footer {
+    margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+    font-size: 12px; color: var(--faint);
+    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  footer a { color: var(--muted); }
+
+  @media print { body { padding: 0; background: #fff; color: #000; } }
+  @media (max-width: 900px) {
+    .ledger-eq { grid-template-columns: 1fr 1fr; }
+    .cell { border-bottom: 1px solid var(--rule); }
+    .hide-sm { display: none; }
+    body { padding: 1.5rem 1rem 3rem; }
+  }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">Research computing · GPU recharge</p>
+    <h1>Reconciliation</h1>
+    <p class="sub">{{.PeriodLabel}} · all capacity, all groups</p>
+  </header>
+
+  <div class="ledger-eq">
+    <div class="cell">
+      <div class="k">Capacity</div>
+      <div class="v">{{.CapacityStr}}</div>
+      <div class="n">GPU-hours we had</div>
+    </div>
+    <div class="cell gap idle">
+      <div class="k">− Idle</div>
+      <div class="v">{{.IdleStr}}</div>
+      <div class="n">{{.IdlePctStr}} of capacity · not a bug</div>
+    </div>
+    <div class="cell">
+      <div class="k">= Allocated</div>
+      <div class="v">{{.AllocatedStr}}</div>
+      <div class="n">GPU-hours users held</div>
+    </div>
+    <div class="cell gap lost {{if .Clean}}clean{{end}}">
+      <div class="k">− Unbilled</div>
+      <div class="v">{{.UnbilledStr}}</div>
+      <div class="n">{{if .Clean}}nothing on the floor{{else}}config gap · fix it{{end}}</div>
+    </div>
+    <div class="cell">
+      <div class="k">= Billed</div>
+      <div class="v">{{.BilledStr}}</div>
+      <div class="n">across all statements</div>
+    </div>
+  </div>
+
+  <!-- Exceptions first. Burying them is how they get missed. -->
+  <div class="exceptions {{if .Clean}}clean{{end}}">
+    <h2>
+      Exceptions
+      {{if not .Clean}}<span class="count">{{.ExceptionCount}}</span>{{end}}
+    </h2>
+
+    {{if .Clean}}
+    <div class="all-clear">
+      Every GPU-hour in the ledger is on a statement. The period can be closed.
+    </div>
+    {{end}}
+
+    {{range .Unbilled}}
+    <div class="exc">
+      <div class="what">
+        <span class="qty">{{.HoursStr}} GPU-hours</span> unbilled ·
+        <code>{{.ClusterID}}/{{.NodePool}}</code> · {{.GPUModel}}
+      </div>
+      <div class="why">{{.Reason}}</div>
+    </div>
+    {{end}}
+
+    {{range .Orphans}}
+    <div class="exc">
+      <div class="what">
+        Unplaceable pod · <code>{{.PodName}}</code>
+        {{if .NodeName}}on unknown node <code>{{.NodeName}}</code>{{end}}
+      </div>
+      <div class="why">
+        {{.WorkloadName}} · {{.Submitter}} · {{.Project}} · started {{.StartedStr}}.
+        Not billed — the node was gone before we could resolve it, and guessing
+        placement is the one thing this system won't do.
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  <section>
+    <h2>Capacity by pool</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Cost basis</th>
+          <th class="hide-sm">Cluster / pool</th>
+          <th class="hide-sm">GPU model</th>
+          <th class="num">Capacity</th>
+          <th class="num">Allocated</th>
+          <th class="num">Idle</th>
+          <th class="num">Unbilled</th>
+          <th class="num">Billed</th>
+          <th>Utilization</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td {{if .Unmapped}}class="unmapped"{{end}}>{{.ClassName}}</td>
+          <td class="hide-sm"><span class="mono">{{.ClusterID}}/{{.NodePool}}</span></td>
+          <td class="hide-sm"><span class="mono">{{.GPUModel}}</span></td>
+          <td class="num">{{.CapacityStr}}</td>
+          <td class="num">{{.AllocatedStr}}</td>
+          <td class="num v-idle">{{.IdleStr}}</td>
+          <td class="num {{if .HasUnbilled}}v-lost{{else}}v-zero{{end}}">{{.UnbilledStr}}</td>
+          <td class="num">{{.BilledStr}}</td>
+          <td>
+            <span class="util-bar {{if .LowUtil}}low{{end}}"><i style="width:{{.UtilWidth}}%"></i></span>
+            <span class="util-pct">{{.UtilStr}}</span>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">Total</td>
+          <td class="num">{{.CapacityStr}}</td>
+          <td class="num">{{.AllocatedStr}}</td>
+          <td class="num v-idle">{{.IdleStr}}</td>
+          <td class="num {{if not .Clean}}v-lost{{end}}">{{.UnbilledStr}}</td>
+          <td class="num">{{.BilledStr}}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <div class="note">
+    <strong>Idle and unbilled are not the same thing and must never be summed.</strong>
+    Idle is capacity nobody asked for — an operational fact you manage with
+    scheduling and scale-to-zero, and on pre-purchased capacity it is money that
+    was already spent. Unbilled is allocated GPU-hours that fell out of every
+    statement because of a missing <code>pool_class</code> mapping or a missing
+    rate. That is a bug, it is fixable with an <code>INSERT</code>, and until it
+    is fixed somebody used a GPU and nobody paid for it.
+    <br><br>
+    Capacity is sampled at the poll interval, so a node that lived and died
+    between two polls is invisible here. Allocation is exact.
+  </div>
+
+  <footer>
+    <span>Billed on GPU allocation. Utilization is reported, not billed.</span>
+    <span><a href="?format=csv">Download CSV</a></span>
+  </footer>
+</main>

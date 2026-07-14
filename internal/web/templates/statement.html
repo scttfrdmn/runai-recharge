@@ -1,0 +1,275 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.GroupName}} — {{.PeriodLabel}} — Recharge</title>
+
+<style>
+  /* The subject is a recharge statement. Its vernacular is the ledger: tabular
+     figures, hairline rules, right-aligned money, nothing that would look out of
+     place stapled to a purchase order.
+
+     Two places it departs from an invoice, and both are the reason it exists:
+     the utilization column, and the fact that capacity is SECTIONED rather than
+     blended. A PI who ran on-prem and in AWS this month must see two costs, not
+     one number that hides where the money went. */
+
+  :root {
+    --ink:    #16181d;
+    --paper:  #fbfbf9;
+    --rule:   #ddddd6;
+    --muted:  #6b7076;
+    --faint:  #9a9ea3;
+
+    --util-good: #3f7d58;
+    --util-mid:  #b8791f;
+    --util-poor: #b5443a;
+
+    --provisional: #7a5cc4;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6e6e2; --paper: #14161a; --rule: #2e3238;
+      --muted: #8f959c; --faint: #626870;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem 6rem;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 15px/1.5 ui-sans-serif, "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { max-width: 1120px; margin: 0 auto; }
+
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1rem; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 .6rem;
+  }
+
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.015em; margin: 0 0 .5rem; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 0 2rem; font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  .provisional {
+    display: inline-flex; align-items: center; gap: .45rem;
+    margin-top: .9rem; padding: .3rem .6rem;
+    border: 1px solid var(--provisional); border-radius: 2px;
+    font-size: 12px; color: var(--provisional);
+  }
+  .provisional::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--provisional);
+  }
+
+  .section { margin-top: 2.75rem; }
+
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; padding-bottom: .5rem;
+  }
+  .section-name {
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 600; margin: 0;
+  }
+  .section-rate { font-size: 12px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 500; color: var(--muted); text-align: left;
+    padding: .5rem .7rem; border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  th.num { text-align: right; }
+
+  td {
+    padding: .6rem .7rem; border-bottom: 1px solid var(--rule);
+    font-size: 13.5px; vertical-align: baseline;
+  }
+  td.num { text-align: right; font-feature-settings: "tnum"; white-space: nowrap; }
+  td.date, td.user { color: var(--muted); white-space: nowrap; }
+
+  .what { font-weight: 500; }
+  .desc { display: block; font-size: 12px; color: var(--muted); margin-top: .15rem; }
+  .undeclared {
+    display: block; font-size: 12px; color: var(--faint);
+    font-style: italic; margin-top: .15rem;
+  }
+
+  .pool {
+    font-size: 11px; color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .running { color: var(--muted); }
+
+  /* The signature element. A bar, not a number, because the point is that the
+     3% row should be visible from across the room without being read. */
+  .util { white-space: nowrap; }
+  .util-bar {
+    display: inline-block; width: 40px; height: 5px;
+    background: var(--rule); border-radius: 1px;
+    margin-right: .45rem; overflow: hidden; vertical-align: middle;
+  }
+  .util-bar i { display: block; height: 100%; border-radius: 1px; }
+  .util-pct { font-size: 12px; font-feature-settings: "tnum"; }
+
+  .u-good i { background: var(--util-good); }
+  .u-mid  i { background: var(--util-mid);  }
+  .u-poor i { background: var(--util-poor); }
+  .u-good .util-pct { color: var(--util-good); }
+  .u-mid  .util-pct { color: var(--util-mid);  }
+  .u-poor .util-pct { color: var(--util-poor); }
+  .u-none .util-pct { color: var(--faint); }
+
+  .subtotal td {
+    border-bottom: none; border-top: 1px solid var(--ink);
+    padding-top: .7rem; font-weight: 500;
+  }
+
+  .grand { margin-top: 3rem; padding-top: 1rem; border-top: 2px solid var(--ink); }
+  .grand table { max-width: 420px; margin-left: auto; }
+  .grand td { border: none; padding: .35rem .7rem; }
+  .grand .label { color: var(--muted); }
+  .grand .num { text-align: right; font-feature-settings: "tnum"; }
+  .grand .total td { font-weight: 600; font-size: 16px; padding-top: .7rem; border-top: 1px solid var(--rule); }
+  .grand .ytd td { border-top: 1px solid var(--rule); padding-top: .7rem; }
+  .grand .ytd .amt { font-weight: 600; }
+
+  .empty { padding: 4rem 0; text-align: center; color: var(--muted); }
+
+  footer {
+    margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+    font-size: 12px; color: var(--faint); display: flex;
+    justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  footer a { color: var(--muted); }
+
+  @media print {
+    body { padding: 0; background: #fff; color: #000; }
+    .provisional { border-color: #000; color: #000; }
+    .section { break-inside: avoid; }
+  }
+
+  @media (max-width: 820px) {
+    .hide-sm { display: none; }
+    body { padding: 1.5rem 1rem 3rem; }
+  }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">Research computing · GPU recharge</p>
+    <h1>{{.GroupName}}</h1>
+    <div class="meta">
+      <span><b>{{.PeriodLabel}}</b></span>
+      {{if .ScopeName}}<span>Capacity <b>{{.ScopeName}}</b></span>{{end}}
+      {{if .FundCode}}<span>Fund <b>{{.FundCode}}</b></span>{{end}}
+    </div>
+    {{if .Provisional}}
+    <div class="provisional">Period is open — figures update as jobs complete</div>
+    {{end}}
+  </header>
+
+  {{if .Sections}}
+
+  {{range .Sections}}
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-name">{{.ClassName}}</h2>
+      <span class="section-rate">{{range $i, $r := .Rates}}{{if $i}} · {{end}}{{$r}}{{end}}</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Workload</th>
+          <th class="hide-sm">Type</th>
+          <th class="hide-sm">Pool</th>
+          <th class="num">GPU</th>
+          <th class="num">GPU-sec</th>
+          <th class="num hide-sm">Rate</th>
+          <th class="num">Amount</th>
+          <th class="num hide-sm">Running</th>
+          <th>Utilization</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Lines}}
+        <tr>
+          <td class="date">{{.DateStr}}</td>
+          <td class="user">{{.Submitter}}</td>
+          <td>
+            <span class="what">{{.Workload}}</span>
+            {{if .Description}}<span class="desc">{{.Description}}</span>
+            {{else}}<span class="undeclared">no description declared</span>{{end}}
+          </td>
+          <td class="hide-sm">{{.Type}}</td>
+          <td class="hide-sm"><span class="pool">{{.NodePool}}</span></td>
+          <td class="num">{{.GPUAllocStr}}</td>
+          <td class="num">{{.GPUSecondsStr}}</td>
+          <td class="num hide-sm">{{.RateStr}}</td>
+          <td class="num">{{.AmountStr}}</td>
+          <td class="num running hide-sm">{{.RunningStr}}</td>
+          <td class="util {{.UtilClass}}">
+            <span class="util-bar"><i style="width:{{.UtilWidth}}%"></i></span>
+            <span class="util-pct">{{.UtilStr}}</span>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+      <tfoot>
+        <tr class="subtotal">
+          <td colspan="6">{{.ClassName}} subtotal</td>
+          <td class="num">{{.GPUSecondsStr}}</td>
+          <td class="hide-sm"></td>
+          <td class="num">{{.SubtotalStr}}</td>
+          <td class="hide-sm"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+  {{end}}
+
+  <div class="grand">
+    <table>
+      {{range .Sections}}
+      <tr>
+        <td class="label">{{.ClassName}}</td>
+        <td class="num">{{.SubtotalStr}}</td>
+      </tr>
+      {{end}}
+      <tr class="total">
+        <td>{{$.PeriodLabel}} total</td>
+        <td class="num">{{$.TotalStr}}</td>
+      </tr>
+      <tr class="ytd">
+        <td class="label">Fiscal year to date</td>
+        <td class="num amt">{{$.FiscalYTDStr}}</td>
+      </tr>
+    </table>
+  </div>
+
+  {{else}}
+  <p class="empty">No GPU usage recorded for this group in {{.PeriodLabel}}.</p>
+  {{end}}
+
+  <footer>
+    <span>Billed on GPU allocation. Utilization is reported, not billed.</span>
+    <span><a href="?format=csv">Download CSV</a></span>
+  </footer>
+</main>
