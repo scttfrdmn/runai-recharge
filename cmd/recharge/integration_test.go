@@ -146,7 +146,7 @@ func freshSchema(ctx context.Context, t *testing.T, dsn string) {
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	if _, err := conn.Exec(ctx, "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"); err != nil {
 		t.Fatalf("reset schema: %v", err)

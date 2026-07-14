@@ -1,0 +1,19 @@
+version: "2"
+
+# Lint config for runai-recharge. The default linters (errcheck, govet,
+# ineffassign, staticcheck, unused) are on; we only tune errcheck to stop
+# flagging the handful of calls that Go convention deliberately ignores, so a
+# real unchecked error still stands out instead of drowning in noise.
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        # A deferred Close/Rollback on a read or an already-committed tx has no
+        # meaningful error to handle -- the universal Go idiom is to ignore it.
+        - (io.Closer).Close
+        - (github.com/jackc/pgx/v5.Tx).Rollback
+        # Writing to an http.ResponseWriter: if the client hung up there is
+        # nothing to do but return, and the handler already has.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln

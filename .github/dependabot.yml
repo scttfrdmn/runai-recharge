@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Go module dependencies.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for routine minor/patch bumps; majors still come separately.
+      go-minor-patch:
+        update-types: [minor, patch]
+
+  # The Actions pinned in the workflows above.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']

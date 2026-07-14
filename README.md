@@ -1,5 +1,12 @@
 # runai-recharge
 
+[![CI](https://github.com/scttfrdmn/runai-recharge/actions/workflows/ci.yml/badge.svg)](https://github.com/scttfrdmn/runai-recharge/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/scttfrdmn/runai-recharge/actions/workflows/codeql.yml/badge.svg)](https://github.com/scttfrdmn/runai-recharge/actions/workflows/codeql.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/scttfrdmn/runai-recharge)](https://goreportcard.com/report/github.com/scttfrdmn/runai-recharge)
+[![Go Reference](https://pkg.go.dev/badge/github.com/scttfrdmn/runai-recharge.svg)](https://pkg.go.dev/github.com/scttfrdmn/runai-recharge)
+[![Go 1.25+](https://img.shields.io/badge/go-1.25%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 GPU chargeback for a Run:ai cluster that spans on-premises and cloud.
 
 Polls the Run:ai control-plane API, keeps an append-only hourly ledger of who
