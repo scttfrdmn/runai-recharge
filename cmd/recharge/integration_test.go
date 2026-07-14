@@ -248,7 +248,7 @@ func TestPollToStatementIntegration(t *testing.T) {
 	if len(sections) != 2 {
 		t.Errorf("sections = %d, want 2 (onprem, aws-burst)", len(sections))
 	}
-	approx("onprem subtotal", sections["onprem"].Subtotal, 17.85)  // 16.80 + 1.05
+	approx("onprem subtotal", sections["onprem"].Subtotal, 17.85) // 16.80 + 1.05
 	approx("aws-burst subtotal", sections["aws-burst"].Subtotal, 2.40)
 	if stmt.Provisional {
 		t.Error("period ended in the past; statement must not be provisional")
