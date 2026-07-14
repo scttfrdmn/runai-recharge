@@ -67,9 +67,9 @@ jobs:
           go-version: 'stable'
           cache: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.12
+          version: v2.12.2
 
   govulncheck:
     runs-on: ubuntu-latest
