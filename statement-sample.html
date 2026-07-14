@@ -1,0 +1,410 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuroscience / Chen Lab — April 2026 — Recharge</title>
+
+<style>
+   
+
+  :root {
+    --ink:    #16181d;
+    --paper:  #fbfbf9;
+    --rule:   #ddddd6;
+    --muted:  #6b7076;
+    --faint:  #9a9ea3;
+
+    --util-good: #3f7d58;
+    --util-mid:  #b8791f;
+    --util-poor: #b5443a;
+
+    --provisional: #7a5cc4;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6e6e2; --paper: #14161a; --rule: #2e3238;
+      --muted: #8f959c; --faint: #626870;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem 6rem;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 15px/1.5 ui-sans-serif, "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { max-width: 1120px; margin: 0 auto; }
+
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1rem; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 .6rem;
+  }
+
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.015em; margin: 0 0 .5rem; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 0 2rem; font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 500; }
+
+  .provisional {
+    display: inline-flex; align-items: center; gap: .45rem;
+    margin-top: .9rem; padding: .3rem .6rem;
+    border: 1px solid var(--provisional); border-radius: 2px;
+    font-size: 12px; color: var(--provisional);
+  }
+  .provisional::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--provisional);
+  }
+
+  .section { margin-top: 2.75rem; }
+
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; padding-bottom: .5rem;
+  }
+  .section-name {
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 600; margin: 0;
+  }
+  .section-rate { font-size: 12px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 500; color: var(--muted); text-align: left;
+    padding: .5rem .7rem; border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  th.num { text-align: right; }
+
+  td {
+    padding: .6rem .7rem; border-bottom: 1px solid var(--rule);
+    font-size: 13.5px; vertical-align: baseline;
+  }
+  td.num { text-align: right; font-feature-settings: "tnum"; white-space: nowrap; }
+  td.date, td.user { color: var(--muted); white-space: nowrap; }
+
+  .what { font-weight: 500; }
+  .desc { display: block; font-size: 12px; color: var(--muted); margin-top: .15rem; }
+  .undeclared {
+    display: block; font-size: 12px; color: var(--faint);
+    font-style: italic; margin-top: .15rem;
+  }
+
+  .pool {
+    font-size: 11px; color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .running { color: var(--muted); }
+
+   
+  .util { white-space: nowrap; }
+  .util-bar {
+    display: inline-block; width: 40px; height: 5px;
+    background: var(--rule); border-radius: 1px;
+    margin-right: .45rem; overflow: hidden; vertical-align: middle;
+  }
+  .util-bar i { display: block; height: 100%; border-radius: 1px; }
+  .util-pct { font-size: 12px; font-feature-settings: "tnum"; }
+
+  .u-good i { background: var(--util-good); }
+  .u-mid  i { background: var(--util-mid);  }
+  .u-poor i { background: var(--util-poor); }
+  .u-good .util-pct { color: var(--util-good); }
+  .u-mid  .util-pct { color: var(--util-mid);  }
+  .u-poor .util-pct { color: var(--util-poor); }
+  .u-none .util-pct { color: var(--faint); }
+
+  .subtotal td {
+    border-bottom: none; border-top: 1px solid var(--ink);
+    padding-top: .7rem; font-weight: 500;
+  }
+
+  .grand { margin-top: 3rem; padding-top: 1rem; border-top: 2px solid var(--ink); }
+  .grand table { max-width: 420px; margin-left: auto; }
+  .grand td { border: none; padding: .35rem .7rem; }
+  .grand .label { color: var(--muted); }
+  .grand .num { text-align: right; font-feature-settings: "tnum"; }
+  .grand .total td { font-weight: 600; font-size: 16px; padding-top: .7rem; border-top: 1px solid var(--rule); }
+  .grand .ytd td { border-top: 1px solid var(--rule); padding-top: .7rem; }
+  .grand .ytd .amt { font-weight: 600; }
+
+  .empty { padding: 4rem 0; text-align: center; color: var(--muted); }
+
+  footer {
+    margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+    font-size: 12px; color: var(--faint); display: flex;
+    justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  footer a { color: var(--muted); }
+
+  @media print {
+    body { padding: 0; background: #fff; color: #000; }
+    .provisional { border-color: #000; color: #000; }
+    .section { break-inside: avoid; }
+  }
+
+  @media (max-width: 820px) {
+    .hide-sm { display: none; }
+    body { padding: 1.5rem 1rem 3rem; }
+  }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">Research computing · GPU recharge</p>
+    <h1>Neuroscience / Chen Lab</h1>
+    <div class="meta">
+      <span><b>April 2026</b></span>
+      
+      <span>Fund <b>R01-GM-114455</b></span>
+    </div>
+    
+    <div class="provisional">Period is open — figures update as jobs complete</div>
+    
+  </header>
+
+  
+
+  
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-name">On-premises capacity</h2>
+      <span class="section-rate">H100-80GB $1.05/GPU-hr</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Workload</th>
+          <th class="hide-sm">Type</th>
+          <th class="hide-sm">Pool</th>
+          <th class="num">GPU</th>
+          <th class="num">GPU-sec</th>
+          <th class="num hide-sm">Rate</th>
+          <th class="num">Amount</th>
+          <th class="num hide-sm">Running</th>
+          <th>Utilization</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td class="date">2026-04-02</td>
+          <td class="user">jchen</td>
+          <td>
+            <span class="what">protein-fold-3</span>
+            <span class="desc">AlphaFold3 ensemble, PCSK9 variants</span>
+            
+          </td>
+          <td class="hide-sm">Training</td>
+          <td class="hide-sm"><span class="pool">default</span></td>
+          <td class="num">8</td>
+          <td class="num">115,203</td>
+          <td class="num hide-sm">$1.05</td>
+          <td class="num">$33.60</td>
+          <td class="num running hide-sm">$33.60</td>
+          <td class="util u-good">
+            <span class="util-bar"><i style="width:91%"></i></span>
+            <span class="util-pct">91%</span>
+          </td>
+        </tr>
+        
+        <tr>
+          <td class="date">2026-04-02</td>
+          <td class="user">mrivera</td>
+          <td>
+            <span class="what">dev-workspace</span>
+            <span class="undeclared">no description declared</span>
+          </td>
+          <td class="hide-sm">Workspace</td>
+          <td class="hide-sm"><span class="pool">default</span></td>
+          <td class="num">1</td>
+          <td class="num">7,200</td>
+          <td class="num hide-sm">$1.05</td>
+          <td class="num">$2.10</td>
+          <td class="num running hide-sm">$35.70</td>
+          <td class="util u-poor">
+            <span class="util-bar"><i style="width:3%"></i></span>
+            <span class="util-pct">3%</span>
+          </td>
+        </tr>
+        
+        <tr>
+          <td class="date">2026-04-09</td>
+          <td class="user">kobrien</td>
+          <td>
+            <span class="what">test2</span>
+            <span class="undeclared">no description declared</span>
+          </td>
+          <td class="hide-sm">Training</td>
+          <td class="hide-sm"><span class="pool">default</span></td>
+          <td class="num">0.5</td>
+          <td class="num">41,400</td>
+          <td class="num hide-sm">$1.05</td>
+          <td class="num">$12.07</td>
+          <td class="num running hide-sm">$47.78</td>
+          <td class="util u-mid">
+            <span class="util-bar"><i style="width:38%"></i></span>
+            <span class="util-pct">38%</span>
+          </td>
+        </tr>
+        
+      </tbody>
+      <tfoot>
+        <tr class="subtotal">
+          <td colspan="6">On-premises capacity subtotal</td>
+          <td class="num">163,803</td>
+          <td class="hide-sm"></td>
+          <td class="num">$47.78</td>
+          <td class="hide-sm"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+  
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-name">AWS burst capacity</h2>
+      <span class="section-rate">H100-80GB $2.40/GPU-hr</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Workload</th>
+          <th class="hide-sm">Type</th>
+          <th class="hide-sm">Pool</th>
+          <th class="num">GPU</th>
+          <th class="num">GPU-sec</th>
+          <th class="num hide-sm">Rate</th>
+          <th class="num">Amount</th>
+          <th class="num hide-sm">Running</th>
+          <th>Utilization</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td class="date">2026-04-05</td>
+          <td class="user">jchen</td>
+          <td>
+            <span class="what">protein-fold-4</span>
+            <span class="desc">AlphaFold3 ensemble, rerun w/ MSA depth 512</span>
+            
+          </td>
+          <td class="hide-sm">Training</td>
+          <td class="hide-sm"><span class="pool">aws</span></td>
+          <td class="num">8</td>
+          <td class="num">115,203</td>
+          <td class="num hide-sm">$2.40</td>
+          <td class="num">$76.80</td>
+          <td class="num running hide-sm">$124.58</td>
+          <td class="util u-good">
+            <span class="util-bar"><i style="width:94%"></i></span>
+            <span class="util-pct">94%</span>
+          </td>
+        </tr>
+        
+        <tr>
+          <td class="date">2026-04-14</td>
+          <td class="user">mrivera</td>
+          <td>
+            <span class="what">seq-embed-batch</span>
+            <span class="desc">ESM-2 embeddings, 1.2M sequences</span>
+            
+          </td>
+          <td class="hide-sm">Inference</td>
+          <td class="hide-sm"><span class="pool">aws</span></td>
+          <td class="num">4</td>
+          <td class="num">208,616</td>
+          <td class="num hide-sm">$2.40</td>
+          <td class="num">$139.08</td>
+          <td class="num running hide-sm">$263.66</td>
+          <td class="util u-good">
+            <span class="util-bar"><i style="width:77%"></i></span>
+            <span class="util-pct">77%</span>
+          </td>
+        </tr>
+        
+        <tr>
+          <td class="date">2026-04-21</td>
+          <td class="user">kobrien</td>
+          <td>
+            <span class="what">jobs-final-FINAL</span>
+            <span class="undeclared">no description declared</span>
+          </td>
+          <td class="hide-sm">Training</td>
+          <td class="hide-sm"><span class="pool">aws</span></td>
+          <td class="num">8</td>
+          <td class="num">61,200</td>
+          <td class="num hide-sm">$2.40</td>
+          <td class="num">$40.80</td>
+          <td class="num running hide-sm">$304.46</td>
+          <td class="util u-none">
+            <span class="util-bar"><i style="width:0%"></i></span>
+            <span class="util-pct">—</span>
+          </td>
+        </tr>
+        
+      </tbody>
+      <tfoot>
+        <tr class="subtotal">
+          <td colspan="6">AWS burst capacity subtotal</td>
+          <td class="num">385,019</td>
+          <td class="hide-sm"></td>
+          <td class="num">$256.68</td>
+          <td class="hide-sm"></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+  
+
+  <div class="grand">
+    <table>
+      
+      <tr>
+        <td class="label">On-premises capacity</td>
+        <td class="num">$47.78</td>
+      </tr>
+      
+      <tr>
+        <td class="label">AWS burst capacity</td>
+        <td class="num">$256.68</td>
+      </tr>
+      
+      <tr class="total">
+        <td>April 2026 total</td>
+        <td class="num">$304.46</td>
+      </tr>
+      <tr class="ytd">
+        <td class="label">Fiscal year to date</td>
+        <td class="num amt">$11,509.01</td>
+      </tr>
+    </table>
+  </div>
+
+  
+
+  <footer>
+    <span>Billed on GPU allocation. Utilization is reported, not billed.</span>
+    <span><a href="?format=csv">Download CSV</a></span>
+  </footer>
+</main>
