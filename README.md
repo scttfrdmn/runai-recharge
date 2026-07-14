@@ -194,6 +194,15 @@ leave that visible; it's the cheapest enforcement you have.
 
 ## Invariants
 
+**Every guess is instrumented.** This system guesses constantly — where a pod
+ran, which rate applies, whether the API paginates the way we think. It cannot
+avoid that; it runs against an API whose behavior varies by cluster version. What
+it refuses to do is guess *silently*. Every place we don't know, and can't know
+yet, is wired so the not-knowing becomes visible the moment it starts costing
+money — as an error you have to clear, never as a zero you'll never question.
+`orphan_pod`, `Unbilled`, `verify-alloc`, and the pagination tripwire are all the
+same move. That is the invariant the rest of these protect.
+
 These are load-bearing. Each has an obvious-looking simplification that quietly
 loses money. If you change code near them, they're what to protect.
 
@@ -209,12 +218,21 @@ whole window — free, precisely because of the invariant above.
 frozen: a late poll or a rate correction cannot rewrite a closed month. A frozen
 rate that nobody reads back is not a frozen rate.
 
-**Nothing is ever guessed.** No default GPU model, no inferred placement, no
-assumed pool. A pod on an unknown node becomes an `orphan_pod` and does not
-bill. Ledger rows that join no rate are `Unbilled` and do not bill. Both appear
-on the reconciliation. *In a billing ledger, a missing value must never have a
-default* — an error you have to fix is cheap; a plausible number you never
+**A missing value never gets a default.** No default GPU model, no inferred
+placement, no assumed pool. A pod on an unknown node becomes an `orphan_pod` and
+does not bill. Ledger rows that join no rate are `Unbilled` and do not bill. Both
+appear on the reconciliation. *In a billing ledger, a missing value must never
+have a default* — an error you have to fix is cheap; a plausible number you never
 question is not.
+
+**Pagination fails loudly.** The Run:ai workload list is paged, and the scheme
+varies by cluster version — we can't know it without the cluster in front of us.
+So `ListWorkloads` doesn't try to be clever: it stops only on a short page, and a
+*full* page that produced no new workloads is a hard error, not a silent break. A
+wrong scheme truncates a month to its first page and looks completely plausible;
+this turns that into a failed poll on day one. The dedup-by-ID that measures
+"new workloads" is load-bearing, not a redundant guard — remove it and the
+tripwire goes blind.
 
 **Authz fails closed.** Every route 404s until `Server.Authz` is wired to your
 SSO. For a single-operator pilot, `RECHARGE_INSECURE_ADMIN=yes-i-mean-it` — which

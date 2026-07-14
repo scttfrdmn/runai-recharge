@@ -245,6 +245,12 @@ func (c *Client) ListWorkloads(ctx context.Context, since, until time.Time) ([]W
 
 		// Dedup by ID: with both an offset and a token in flight we must never
 		// count the same workload twice, and progress is measured in NEW rows.
+		//
+		// LOAD-BEARING. This is not a redundant guard on top of an idempotent
+		// poll path -- it is what makes `fresh == 0` mean "the page did no work."
+		// Remove it because the ledger dedups anyway and the tripwire below goes
+		// blind: a scheme that re-serves page 1 forever counts as progress every
+		// time and the truncation/loop comes back, silently. Keep it.
 		fresh := 0
 		for _, w := range p.Workloads {
 			if seen[w.ID] {
